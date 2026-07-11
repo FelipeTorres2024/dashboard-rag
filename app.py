@@ -216,9 +216,9 @@ else:
                 st.caption(f"Justificación RAG: {d['justificacion']}")
 
         # Mecanismo de feedback del experto
-        st.markdown("#### 4. Mecanismo de feedback del experto")
-        colf1, colf2 = st.columns()
-        with colf1:
+		st.markdown("#### 4. Mecanismo de feedback del experto")
+		colf1, colf2 = st.columns(2)  # <--- CORREGIDO: Añadido el 2
+		with colf1:
             st.write("¿Es correcta esta detección? Tu respuesta alimenta el ciclo de mejora continua (Kaizen).")
         with colf2:
             fb_col1, fb_col2 = st.columns(2)
