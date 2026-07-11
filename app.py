@@ -73,7 +73,6 @@ def limpiar_pruebas():
     st.session_state["contratos_cargados"] = {}
     st.session_state["uploader_key"] += 1
     logging.info(f"LIMPIEZA - Usuario '{st.session_state['usuario_actual']}' restauró la pantalla a blanco.")
-
 # ======================================================================
 # LÓGICA DE RENDERIZADO (LOGIN O DASHBOARD)
 # ======================================================================
@@ -121,7 +120,8 @@ else:
         "Capítulo VII, Artículo 61 de la Ley de Adquisiciones del Estado de Veracruz "
         "· Seminario de Innovación, Maestría en Inteligencia Artificial (UNIR)"
     )
-        with st.expander("ℹ️ Cómo funciona este prototipo (léeme antes de evaluar)", expanded=False):
+
+    with st.expander("ℹ️ Cómo funciona este prototipo (léeme antes de evaluar)", expanded=False):
         st.markdown("""
         Este prototipo implementa el pipeline **RAG (Retrieval-Augmented Generation)** descrito en la
         Entrega Final del proyecto, en una versión **100% gratuita y sin necesidad de API key**:
@@ -165,8 +165,7 @@ else:
             st.success(f"{len(uploaded_files)} contrato(s) procesado(s).")
 
     resultados = st.session_state["resultados"]
-
-    # CORRECCIÓN CLAVE: Usamos condicional en vez de st.stop() para permitir logs abajo
+    # Usamos condicional en vez de st.stop() para permitir logs abajo
     if not resultados:
         st.info("Carga uno o más contratos en PDF para iniciar el análisis.")
     else:
