@@ -121,7 +121,7 @@ else:
         "Capítulo VII, Artículo 61 de la Ley de Adquisiciones del Estado de Veracruz "
         "· Seminario de Innovación, Maestría en Inteligencia Artificial (UNIR)"
     )
-    with st.expander("ℹ️ Cómo funciona este prototipo (léeme antes de evaluar)", expanded=False):
+        with st.expander("ℹ️ Cómo funciona este prototipo (léeme antes de evaluar)", expanded=False):
         st.markdown("""
         Este prototipo implementa el pipeline **RAG (Retrieval-Augmented Generation)** descrito en la
         Entrega Final del proyecto, en una versión **100% gratuita y sin necesidad de API key**:
@@ -215,10 +215,10 @@ else:
                 )
                 st.caption(f"Justificación RAG: {d['justificacion']}")
 
-        # Mecanismo de feedback del experto
-		st.markdown("#### 4. Mecanismo de feedback del experto")
-		colf1, colf2 = st.columns(2)  # <--- CORREGIDO: Añadido el 2
-		with colf1:
+        # Mecanismo de feedback del experto - SECCIÓN COMPLETAMENTE CORREGIDA CON ESPACIOS
+        st.markdown("#### 4. Mecanismo de feedback del experto")
+        colf1, colf2 = st.columns(2)
+        with colf1:
             st.write("¿Es correcta esta detección? Tu respuesta alimenta el ciclo de mejora continua (Kaizen).")
         with colf2:
             fb_col1, fb_col2 = st.columns(2)
@@ -263,7 +263,6 @@ else:
             
             st.text_area("Historial de interacciones recopiladas en el servidor:", value=contenido_log, height=220)
             
-            # CORRECCIÓN DE SINTAXIS APLICADA AQUÍ: Formateo correcto de f-string y datetime
             st.download_button(
                 label="📥 Descargar bitácora de logs (.txt)",
                 data=contenido_log,
