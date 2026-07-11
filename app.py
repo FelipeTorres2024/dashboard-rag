@@ -39,7 +39,10 @@ logging.basicConfig(
 USUARIOS_VALIDOS = {
     "admin": "RAG_Admin_2026",
     "evaluador1": "EvalPassword123",
-    "profesor": "DemoClase456"
+    "profesor": "DemoClase456",
+    "mendez": "MendezUNIR2026",
+    "ramirez": "RamirezUNIR2026",
+    "hernandez": "HernandezUNIR2026"
 }
 
 if "autenticado" not in st.session_state:
