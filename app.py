@@ -36,6 +36,7 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S"
 )
 
+# SE CONSERVAN TODOS TUS USUARIOS INTACTOS
 USUARIOS_VALIDOS = {
     "admin": "RAG_Admin_2026",
     "evaluador1": "EvalPassword123",
@@ -49,6 +50,8 @@ if "autenticado" not in st.session_state:
     st.session_state["autenticado"] = False
 if "usuario_actual" not in st.session_state:
     st.session_state["usuario_actual"] = ""
+if "uploader_key" not in st.session_state:
+    st.session_state["uploader_key"] = 100
 
 def verificar_credenciales():
     user = st.session_state["input_user"].strip()
@@ -64,6 +67,13 @@ def verificar_credenciales():
             logging.warning(f"INTENTO FALLIDO - Alguien intentó ingresar con el usuario: '{user}'.")
         st.error("⚠️ Usuario o contraseña incorrectos")
 
+# Función limpia-pantallas controlada sin romper la sesión
+def limpiar_pruebas():
+    st.session_state["resultados"] = {}
+    st.session_state["contratos_cargados"] = {}
+    st.session_state["uploader_key"] += 1
+    logging.info(f"LIMPIEZA - Usuario '{st.session_state['usuario_actual']}' restauró la pantalla a blanco.")
+
 # ======================================================================
 # LÓGICA DE RENDERIZADO (LOGIN O DASHBOARD)
 # ======================================================================
@@ -77,12 +87,17 @@ if not st.session_state["autenticado"]:
     st.button("Ingresar", on_click=verificar_credenciales)
 
 else:
-    # --- DASHBOARD DE TU PROYECTO ORIGINAL (IDENTADO CORRECTAMENTE) ---
+    # --- DASHBOARD DE TU PROYECTO ORIGINAL ---
     
     # Barra lateral de navegación / sesión
     with st.sidebar:
         st.write(f"👤 Conectado como: **{st.session_state['usuario_actual']}**")
-        if st.button("Cerrar Sesión"):
+        
+        # NUEVA MEJORA: Botón para limpiar los datos sin cerrar sesión
+        st.button("🧹 Limpiar pruebas actuales", on_click=limpiar_pruebas, use_container_width=True)
+        st.markdown("---")
+        
+        if st.button("Cerrar Sesión", use_container_width=True):
             logging.info(f"LOGOUT - Usuario: '{st.session_state['usuario_actual']}' cerró sesión.")
             st.session_state["autenticado"] = False
             st.session_state["usuario_actual"] = ""
@@ -106,7 +121,6 @@ else:
         "Capítulo VII, Artículo 61 de la Ley de Adquisiciones del Estado de Veracruz "
         "· Seminario de Innovación, Maestría en Inteligencia Artificial (UNIR)"
     )
-
     with st.expander("ℹ️ Cómo funciona este prototipo (léeme antes de evaluar)", expanded=False):
         st.markdown("""
         Este prototipo implementa el pipeline **RAG (Retrieval-Augmented Generation)** descrito en la
@@ -126,6 +140,7 @@ else:
         "Arrastra o selecciona los contratos en PDF a evaluar",
         type=["pdf"],
         accept_multiple_files=True,
+        key=f"uploader_{st.session_state['uploader_key']}" # Vinculado al botón limpiar
     )
 
     if "resultados" not in st.session_state:
@@ -151,72 +166,110 @@ else:
 
     resultados = st.session_state["resultados"]
 
+    # CORRECCIÓN CLAVE: Usamos condicional en vez de st.stop() para permitir logs abajo
     if not resultados:
         st.info("Carga uno o más contratos en PDF para iniciar el análisis.")
-        st.stop()
+    else:
+        # Panel de resultados (tabla)
+        st.subheader("2. Panel de resultados")
 
-    # Panel de resultados (tabla)
-    st.subheader("2. Panel de resultados")
+        tabla_rows = []
+        for fname, r in resultados.items():
+            tabla_rows.append({
+                "Archivo": fname,
+                "Contrato": r["meta"]["numero_contrato"],
+                "Semáforo": f"{r['semaforo']['icono']} {r['semaforo']['nivel']}",
+                "% Cumplimiento": r["porcentaje_cumplimiento"],
+                "Cláusulas": f"{r['num_presentes']}/{r['num_total']}",
+            })
+        st.dataframe(tabla_rows, use_container_width=True, hide_index=True)
 
-    tabla_rows = []
-    for fname, r in resultados.items():
-        tabla_rows.append({
-            "Archivo": fname,
-            "Contrato": r["meta"]["numero_contrato"],
-            "Semáforo": f"{r['semaforo']['icono']} {r['semaforo']['nivel']}",
-            "% Cumplimiento": r["porcentaje_cumplimiento"],
-            "Cláusulas": f"{r['num_presentes']}/{r['num_total']}",
-        })
-    st.dataframe(tabla_rows, use_container_width=True, hide_index=True)
+        nombre_sel = st.selectbox("Selecciona un contrato para ver el detalle:", list(resultados.keys()))
+        r = resultados[nombre_sel]
 
-    nombre_sel = st.selectbox("Selecciona un contrato para ver el detalle:", list(resultados.keys()))
-    r = resultados[nombre_sel]
+        # Detalle del contrato seleccionado
+        st.subheader(f"3. Detalle — {r['meta']['numero_contrato']}")
 
-    # Detalle del contrato seleccionado
-    st.subheader(f"3. Detalle — {r['meta']['numero_contrato']}")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.markdown(f"<div class='metric-card'><span class='big-badge'>{r['semaforo']['icono']}</span><br>"
+                        f"<b>{r['semaforo']['nivel']}</b><br>{r['semaforo']['descripcion']}</div>",
+                        unsafe_allow_html=True)
+        with col2:
+            st.metric("Porcentaje de cumplimiento", f"{r['porcentaje_cumplimiento']}%")
+        with col3:
+            st.metric("Cláusulas acreditadas", f"{r['num_presentes']} / {r['num_total']}")
 
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.markdown(f"<div class='metric-card'><span class='big-badge'>{r['semaforo']['icono']}</span><br>"
-                    f"<b>{r['semaforo']['nivel']}</b><br>{r['semaforo']['descripcion']}</div>",
-                    unsafe_allow_html=True)
-    with col2:
-        st.metric("Porcentaje de cumplimiento", f"{r['porcentaje_cumplimiento']}%")
-    with col3:
-        st.metric("Cláusulas acreditadas", f"{r['num_presentes']} / {r['num_total']}")
+        st.markdown(f"**Expediente:** {r['meta']['expediente']} | **Monto detectado:** {r['meta']['monto']}")
+        st.markdown(f"**Resumen:** {r['resumen']}")
 
-    st.markdown(f"**Expediente:** {r['meta']['expediente']} | **Monto detectado:** {r['meta']['monto']}")
-    st.markdown(f"**Resumen:** {r['resumen']}")
+        st.markdown("#### Reporte del Artículo 61 (cláusula por cláusula)")
+        for d in r["detalle_clausulas"]:
+            icon = "✅" if d["presente"] else "❌"
+            with st.container():
+                st.markdown(
+                    f"<div class='clause-row'>{icon} <b>Fracción {d['fraccion']}</b> — "
+                    f"{d['nombre']} (peso {d['peso']}) &nbsp;|&nbsp; "
+                    f"cláusula del contrato: <i>{d['cláusula_contrato']}</i></div>",
+                    unsafe_allow_html=True,
+                )
+                st.caption(f"Justificación RAG: {d['justificacion']}")
 
-    st.markdown("#### Reporte del Artículo 61 (cláusula por cláusula)")
-    for d in r["detalle_clausulas"]:
-        icon = "✅" if d["presente"] else "❌"
-        with st.container():
-            st.markdown(
-                f"<div class='clause-row'>{icon} <b>Fracción {d['fraccion']}</b> — "
-                f"{d['nombre']} (peso {d['peso']}) &nbsp;|&nbsp; "
-                f"cláusula del contrato: <i>{d['cláusula_contrato']}</i></div>",
-                unsafe_allow_html=True,
+        # Mecanismo de feedback del experto
+        st.markdown("#### 4. Mecanismo de feedback del experto")
+        colf1, colf2 = st.columns()
+        with colf1:
+            st.write("¿Es correcta esta detección? Tu respuesta alimenta el ciclo de mejora continua (Kaizen).")
+        with colf2:
+            fb_col1, fb_col2 = st.columns(2)
+            if fb_col1.button("✅ Sí, correcta", key=f"ok_{nombre_sel}"):
+                entry = {"contrato": r["meta"]["numero_contrato"], "veredicto": "correcta", "timestamp": datetime.utcnow().isoformat()}
+                data = json.load(open(FEEDBACK_FILE)) if os.path.exists(FEEDBACK_FILE) else []
+                data.append(entry)
+                json.dump(data, open(FEEDBACK_FILE, "w"), ensure_ascii=False, indent=2)
+                logging.info(f"FEEDBACK - Usuario '{st.session_state['usuario_actual']}' aprobó la detección del contrato: {r['meta']['numero_contrato']}")
+                st.success("Feedback registrado. ¡Gracias!")
+            if fb_col2.button("❌ No, corregir", key=f"bad_{nombre_sel}"):
+                entry = {"contrato": r["meta"]["numero_contrato"], "veredicto": "incorrecta", "timestamp": datetime.utcnow().isoformat()}
+                data = json.load(open(FEEDBACK_FILE)) if os.path.exists(FEEDBACK_FILE) else []
+                data.append(entry)
+                json.dump(data, open(FEEDBACK_FILE, "w"), ensure_ascii=False, indent=2)
+                logging.warning(f"FEEDBACK DESACUERDO - Usuario '{st.session_state['usuario_actual']}' marcó error en el contrato: {r['meta']['numero_contrato']}")
+                st.warning("Feedback registrado como desacuerdo. Se revisará en la Sprint Retrospective.")
+
+        # Módulo de similitud entre contratos (opcional en el MVP)
+        if len(resultados) >= 2:
+            st.subheader("5. Módulo de similitud entre contratos (opcional en el MVP)")
+            st.caption("Similitud coseno TF-IDF entre el texto completo de cada par de contratos cargados. "
+                       "Pares con similitud > 0.92 se marcan como posibles indicios de colusión (bid rigging).")
+            contratos_list = list(st.session_state["contratos_cargados"].values())
+            pares = compute_collusion_matrix(contratos_list)
+            st.dataframe(pares, use_container_width=True, hide_index=True)
+
+    st.divider()
+    st.caption(
+        "Prototipo desarrollado como parte del Trabajo de Innovación — Seminario de Innovación, "
+        "Maestría en Inteligencia Artificial, UNIR. Este sistema es una herramienta de apoyo a la "
+        "decisión humana y no sustituye el criterio de un auditor o abogado especializado."
+    )
+
+    # --- PANEL DE AUDITORÍA OCULTO (EXCLUSIVO SOLO PARA EL ROL ADMIN) ---
+    if st.session_state["usuario_actual"] == "admin":
+        st.divider()
+        st.subheader("🛠️ Panel de Auditoría: Registro de Uso Interno (Logs)")
+        try:
+            with open("registro_uso.txt", "r") as f:
+                contenido_log = f.read()
+            
+            st.text_area("Historial de interacciones recopiladas en el servidor:", value=contenido_log, height=220)
+            
+            # CORRECCIÓN DE SINTAXIS APLICADA AQUÍ: Formateo correcto de f-string y datetime
+            st.download_button(
+                label="📥 Descargar bitácora de logs (.txt)",
+                data=contenido_log,
+                file_name=f"auditoria_rag_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                mime="text/plain",
+                use_container_width=False
             )
-            st.caption(f"Justificación RAG: {d['justificacion']}")
-
-    # Mecanismo de feedback del experto
-    st.markdown("#### 4. Mecanismo de feedback del experto")
-    colf1, colf2 = st.columns([3, 1])
-    with colf1:
-        st.write("¿Es correcta esta detección? Tu respuesta alimenta el ciclo de mejora continua (Kaizen).")
-    with colf2:
-        fb_col1, fb_col2 = st.columns(2)
-        if fb_col1.button("✅ Sí, correcta", key=f"ok_{nombre_sel}"):
-            entry = {"contrato": r["meta"]["numero_contrato"], "veredicto": "correcta", "timestamp": datetime.utcnow().isoformat()}
-            data = json.load(open(FEEDBACK_FILE)) if os.path.exists(FEEDBACK_FILE) else []
-            data.append(entry)
-            json.dump(data, open(FEEDBACK_FILE, "w"), ensure_ascii=False, indent=2)
-            logging.info(f"FEEDBACK - Usuario '{st.session_state['usuario_actual']}' aprobó la detección del contrato: {r['meta']['numero_contrato']}")
-            st.success("Feedback registrado. ¡Gracias!")
-        if fb_col2.button("❌ No, corregir", key=f"bad_{nombre_sel}"):
-            entry = {"contrato": r["meta"]["numero_contrato"], "veredicto": "incorrecta", "timestamp": datetime.utcnow().isoformat()}
-            data = json.load(open(FEEDBACK_FILE)) if os.path.exists(FEEDBACK_FILE) else []
-            data.append(entry)
-            json.dump(data, open(FEEDBACK_FILE, "w"), ensure_ascii=False, indent=2)
-
+        except FileNotFoundError:
+            st.info("El archivo de logs se creará en cuanto ocurra la primera interacción.")
